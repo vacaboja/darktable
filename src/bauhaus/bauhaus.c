@@ -1118,6 +1118,14 @@ int dt_bauhaus_combobox_get(GtkWidget *widget)
   return d->active;
 }
 
+void dt_bauhaus_slider_clear_stops(GtkWidget *widget)
+{
+  dt_bauhaus_widget_t *w = DT_BAUHAUS_WIDGET(widget);
+  if(w->type != DT_BAUHAUS_SLIDER) return;
+  dt_bauhaus_slider_data_t *d = &w->data.slider;
+  d->grad_cnt = 0;
+}
+
 void dt_bauhaus_slider_set_stop(GtkWidget *widget, float stop, float r, float g, float b)
 {
   dt_bauhaus_widget_t *w = DT_BAUHAUS_WIDGET(widget);
@@ -1136,7 +1144,7 @@ void dt_bauhaus_slider_set_stop(GtkWidget *widget, float stop, float r, float g,
     }
   }
   // new stop:
-  if(d->grad_cnt < 10)
+  if(d->grad_cnt < DT_BAUHAUS_SLIDER_MAX_STOPS)
   {
     int k = d->grad_cnt++;
     d->grad_pos[k] = rawstop;
@@ -1146,7 +1154,7 @@ void dt_bauhaus_slider_set_stop(GtkWidget *widget, float stop, float r, float g,
   }
   else
   {
-    fprintf(stderr, "[bauhaus_slider_set_stop] only 10 stops allowed.\n");
+    fprintf(stderr, "[bauhaus_slider_set_stop] only %d stops allowed.\n", DT_BAUHAUS_SLIDER_MAX_STOPS);
   }
 }
 
@@ -1289,7 +1297,7 @@ static void dt_bauhaus_draw_baseline(dt_bauhaus_widget_t *w, cairo_t *cr)
     gradient = cairo_pattern_create_linear(0, 0, wd - 4 - ht - 2, ht);
     for(int k = 0; k < d->grad_cnt; k++)
       cairo_pattern_add_color_stop_rgba(gradient, d->grad_pos[k], d->grad_col[k][0], d->grad_col[k][1],
-                                        d->grad_col[k][2], .25f);
+                                        d->grad_col[k][2], 0.4f);
     cairo_set_source(cr, gradient);
   }
   else
