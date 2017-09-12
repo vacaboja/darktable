@@ -409,7 +409,7 @@ void init(dt_view_t *self)
   lib->button = 0;
   lib->modifiers = 0;
   lib->center = lib->pan = lib->track = 0;
-  lib->activate_on_release = -1;
+  lib->activate_on_release = 0;
   lib->zoom_x = dt_conf_get_float("lighttable/ui/zoom_x");
   lib->zoom_y = dt_conf_get_float("lighttable/ui/zoom_y");
   lib->full_preview = 0;
@@ -1772,32 +1772,59 @@ void scrolled(dt_view_t *self, double x, double y, int up, int state)
   }
 }
 
-void activate_rating_element(dt_view_t *self, int ctrl)
+void activate_control_element(dt_view_t *self)
 {
-  int32_t mouse_over_id = dt_control_get_mouse_over_id();
-  dt_image_t *image = dt_image_cache_get(darktable.image_cache, mouse_over_id, 'w');
-  if(image)
+  dt_library_t *lib = (dt_library_t *)self->data;
+  switch(lib->image_over)
   {
-    if(ctrl == DT_VIEW_STAR_1 && ((image->flags & 0x7) == 1))
-      image->flags &= ~0x7;
-    else if(ctrl == DT_VIEW_REJECT && ((image->flags & 0x7) == 6))
-      image->flags &= ~0x7;
-    else
+    case DT_VIEW_DESERT:
     {
-      image->flags &= ~0x7;
-      image->flags |= ctrl;
+      int32_t id = dt_control_get_mouse_over_id();
+      if((lib->modifiers & (GDK_SHIFT_MASK | GDK_CONTROL_MASK)) == 0)
+        dt_selection_select_single(darktable.selection, id);
+      else if((lib->modifiers & (GDK_CONTROL_MASK)) == GDK_CONTROL_MASK)
+        dt_selection_toggle(darktable.selection, id);
+      else if((lib->modifiers & (GDK_SHIFT_MASK)) == GDK_SHIFT_MASK)
+        dt_selection_select_range(darktable.selection, id);
+
+      break;
     }
-    dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_SAFE);
+    case DT_VIEW_REJECT:
+    case DT_VIEW_STAR_1:
+    case DT_VIEW_STAR_2:
+    case DT_VIEW_STAR_3:
+    case DT_VIEW_STAR_4:
+    case DT_VIEW_STAR_5:
+    {
+      int32_t mouse_over_id = dt_control_get_mouse_over_id();
+      dt_image_t *image = dt_image_cache_get(darktable.image_cache, mouse_over_id, 'w');
+      if(image)
+      {
+        if(lib->image_over == DT_VIEW_STAR_1 && ((image->flags & 0x7) == 1))
+          image->flags &= ~0x7;
+        else if(lib->image_over == DT_VIEW_REJECT && ((image->flags & 0x7) == 6))
+          image->flags &= ~0x7;
+        else
+        {
+          image->flags &= ~0x7;
+          image->flags |= lib->image_over;
+        }
+        dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_SAFE);
+      }
+      else
+        dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_RELAXED);
+      _update_collected_images(self);
+      break;
+    }
+    default:
+      break;
   }
-  else
-    dt_image_cache_write_release(darktable.image_cache, image, DT_IMAGE_CACHE_RELAXED);
-  _update_collected_images(self);
 }
 
 void mouse_moved(dt_view_t *self, double x, double y, double pressure, int which)
 {
   dt_library_t *lib = (dt_library_t *)self->data;
-  lib->activate_on_release = -1;
+  lib->activate_on_release = 0;
   dt_control_queue_redraw_center();
 }
 
@@ -1806,7 +1833,11 @@ int button_released(dt_view_t *self, double x, double y, int which, uint32_t sta
 {
   dt_library_t *lib = (dt_library_t *)self->data;
   lib->pan = 0;
-  if(lib->activate_on_release >= 0) activate_rating_element(self, lib->activate_on_release);
+  if(lib->activate_on_release)
+  {
+    lib->activate_on_release = 0;
+    activate_control_element(self);
+  }
   if(which == 1) dt_control_change_cursor(GDK_LEFT_PTR);
   return 1;
 }
@@ -1851,7 +1882,7 @@ int button_pressed(dt_view_t *self, double x, double y, double pressure, int whi
   lib->select_offset_x += x;
   lib->select_offset_y += y;
   lib->pan = 1;
-  lib->activate_on_release = -1;
+  lib->activate_on_release = 0;
   if(which == 1) dt_control_change_cursor(GDK_HAND1);
   if(which == 1 && type == GDK_2BUTTON_PRESS) return 0;
   // image button pressed?
@@ -1860,35 +1891,22 @@ int button_pressed(dt_view_t *self, double x, double y, double pressure, int whi
     switch(lib->image_over)
     {
       case DT_VIEW_DESERT:
-      {
-
-        if (lib->using_arrows)
+        if(lib->layout == 1 && lib->using_arrows)
         {
           // in this case dt_control_get_mouse_over_id() means "last image visited with arrows"
           lib->using_arrows = 0;
           return 0;
         }
-
-        int32_t id = dt_control_get_mouse_over_id();
-        if((lib->modifiers & (GDK_SHIFT_MASK | GDK_CONTROL_MASK)) == 0)
-          dt_selection_select_single(darktable.selection, id);
-        else if((lib->modifiers & (GDK_CONTROL_MASK)) == GDK_CONTROL_MASK)
-          dt_selection_toggle(darktable.selection, id);
-        else if((lib->modifiers & (GDK_SHIFT_MASK)) == GDK_SHIFT_MASK)
-          dt_selection_select_range(darktable.selection, id);
-
-        break;
-      }
       case DT_VIEW_REJECT:
       case DT_VIEW_STAR_1:
       case DT_VIEW_STAR_2:
       case DT_VIEW_STAR_3:
       case DT_VIEW_STAR_4:
       case DT_VIEW_STAR_5:
-        if(lib->layout == 1)
-          activate_rating_element(self, lib->image_over);
-        else
-          lib->activate_on_release = lib->image_over;
+        if(lib->layout == 1) // filemanager
+          activate_control_element(self);
+        else // zoomable lighttable --> defer action to check for pan
+          lib->activate_on_release = 1;
         break;
       case DT_VIEW_GROUP:
       {
