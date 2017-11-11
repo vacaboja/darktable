@@ -840,7 +840,8 @@ static gchar *get_query_string(const dt_collection_properties_t property, const 
 
     case DT_COLLECTION_PROP_FOLDERS: // folders
       query = dt_util_dstrcat(
-          query, "(film_id IN (SELECT id FROM main.film_rolls WHERE folder LIKE '%1$s' OR folder LIKE '%1$s/%%'))",
+          query, "(film_id IN (SELECT id FROM main.film_rolls WHERE folder LIKE '%1$s' OR folder LIKE '%1$s"
+                 G_DIR_SEPARATOR_S "%%'))",
           escaped_text);
       break;
 
@@ -1255,6 +1256,7 @@ void dt_collection_hint_message(const dt_collection_t *collection)
 
 static int dt_collection_image_offset_with_collection(const dt_collection_t *collection, int imgid)
 {
+  if(imgid == -1) return 0;
   const gchar *qin = dt_collection_get_query(collection);
   int offset = 0;
   sqlite3_stmt *stmt;
