@@ -27,6 +27,9 @@
 #define _XOPEN_SOURCE 700 // for localtime_r and dprintf
 #endif
 
+// needs to be defined before any system header includes for control/conf.h to work in C++ code
+#define __STDC_FORMAT_MACROS
+
 #if defined __WIN32__
 #include "win/win.h"
 #endif
@@ -224,6 +227,7 @@ typedef struct darktable_t
   char *cachedir;
   dt_lua_state_t lua_state;
   GList *guides;
+  double start_wtime;
 } darktable_t;
 
 typedef struct

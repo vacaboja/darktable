@@ -587,14 +587,14 @@ static void dt_dev_change_image(dt_develop_t *dev, const uint32_t imgid)
 
     // the base module is the one with the highest multi_priority
     const guint clen = g_list_length(dev->iop);
-    int mp_base = 0;
+    int base_multi_priority = 0;
     for(int k = 0; k < clen; k++)
     {
       dt_iop_module_t *mod = (dt_iop_module_t *)(g_list_nth_data(dev->iop, k));
-      if(strcmp(module->op, mod->op) == 0) mp_base = MAX(mp_base, mod->multi_priority);
+      if(strcmp(module->op, mod->op) == 0) base_multi_priority = MAX(base_multi_priority, mod->multi_priority);
     }
 
-    if(module->multi_priority == mp_base) // if the module is the "base" instance, we keep it
+    if(module->multi_priority == base_multi_priority) // if the module is the "base" instance, we keep it
     {
       module->multi_priority = 0;
       module->multi_name[0] = '\0';
@@ -605,11 +605,7 @@ static void dt_dev_change_image(dt_develop_t *dev, const uint32_t imgid)
     {
       if(!dt_iop_is_hidden(module))
       {
-        gtk_widget_hide(module->expander);
-        gtk_container_remove(
-            GTK_CONTAINER(dt_ui_get_container(darktable.gui->ui, DT_UI_CONTAINER_PANEL_RIGHT_CENTER)),
-            module->expander);
-        gtk_widget_destroy(module->widget);
+        gtk_widget_destroy(module->expander);
         dt_iop_gui_cleanup_module(module);
       }
 
@@ -868,12 +864,17 @@ static gboolean export_key_accel_callback(GtkAccelGroup *accel_group, GObject *a
   const gboolean upscale = dt_conf_get_bool("plugins/lighttable/export/upscale");
   char *style = dt_conf_get_string("plugins/lighttable/export/style");
   const gboolean style_append = dt_conf_get_bool("plugins/lighttable/export/style_append");
+  dt_colorspaces_color_profile_type_t icc_type = dt_conf_get_int("plugins/lighttable/export/icctype");
+  gchar *icc_filename = dt_conf_get_string("plugins/lighttable/export/iccprofile");
+  dt_iop_color_intent_t icc_intent = dt_conf_get_int("plugins/lighttable/export/iccintent");
   // darkroom is for single images, so only export the one the user is working on
   GList *l = g_list_append(NULL, GINT_TO_POINTER(dev->image_storage.id));
-  dt_control_export(l, max_width, max_height, format_index, storage_index, high_quality, upscale, style, style_append);
+  dt_control_export(l, max_width, max_height, format_index, storage_index, high_quality, upscale, style, style_append,
+                    icc_type, icc_filename, icc_intent);
   g_free(format_name);
   g_free(storage_name);
   g_free(style);
+  g_free(icc_filename);
   return TRUE;
 }
 

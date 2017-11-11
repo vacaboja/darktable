@@ -600,6 +600,9 @@ if(USE_MAP)
     if(NOT OSMGPSMAP_VERSION VERSION_LESS 1.1.0)
       add_definitions("-DHAVE_OSMGPSMAP_110_OR_NEWER")
     endif()
+    if(OSMGPSMAP_VERSION VERSION_GREATER 1.1.0)
+      add_definitions("-DHAVE_OSMGPSMAP_NEWER_THAN_110")
+    endif()
     include_directories(SYSTEM ${OSMGPSMAP_INCLUDE_DIRS})
     list(APPEND LIBS ${OSMGPSMAP_LIBRARIES})
     add_definitions(${OSMGPSMAP_DEFINITIONS})
@@ -789,6 +792,11 @@ endif(BUILD_CMSTEST)
 
 # have a gui tool to create CLUTs from colour chart targets
 add_subdirectory(chart)
+
+# have some test programs for unit testing, ...
+if(BUILD_TESTS)
+  add_subdirectory(tests)
+endif(BUILD_TESTS)
 
 #
 # build darktable executable
